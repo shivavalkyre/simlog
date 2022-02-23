@@ -5,24 +5,22 @@ const base_url = process.env.base_url;
 const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
 const res = require('express/lib/response');
+const { DefaultDeserializer } = require('v8');
 var complete_path='';
 var password_hash;
 
 
 const create = (request, response) => {
-    const { username,password,role } 
+    const { username,password,role,nama_lengkap,foto,email,nip,bidang,no_telepon,pegawai } 
     = request.body
 
-
-    
-
-     pool.query('SELECT Count(*) as total FROM tbl_user WHERE username = $1',[username] ,(error, results) => {
+     pool.query('SELECT Count(*) as total FROM tbl_user WHERE username = $1 and is_delete=false',[username] ,(error, results) => {
         if (error) {
           throw error
         }
         if(results.rows[0].total>0)
         {
-            // pool.query('SELECT password from tbl_users WHERE username =$1',[username],(error,results) => {
+            // pool.query('SELECT password from tbl_users WHERE username =$1 and is_delete=false',[username],(error,results) => {
             //     bcrypt.compare(password, results.rows[0].password, function(err, res) {
 
             //         if(res) {
@@ -40,24 +38,27 @@ const create = (request, response) => {
         }else
         {
             // user not exist
-
-            // let sampleFile = request.files.photo;
-            //  console.log(sampleFile);
-            //  const now = Date.now()
-            //  let name = now + '_' + sampleFile['name'].replace(/\s+/g, '')
-            //  complete_path = base_url+'dokumens/user/'+name;
-            //  console.log(__dirname);
-            //  sampleFile.mv(path.join(__dirname + '/dokumens/user/') + name, function (err) {
-            //      if (err)
-            //          console.log(err);
-            //  });
+            let name = '';
+            if(request.files){
+              let sampleFile = request.files.foto;
+              console.log(sampleFile);
+              const now = Date.now()
+              name = now + '_' + sampleFile['name'].replace(/\s+/g, '')
+              console.log(name);
+              complete_path = 'http://localhost:3014/api/V1/dokumens/user/'+name;
+              console.log(__dirname);
+              sampleFile.mv(path.join(__dirname + '/dokumens/user/') + name, function (err) {
+                if (err)
+                console.log(err);
+              });
+            }
 
             bcrypt.genSalt(10,function(err, res) {
                 salt= res
                 bcrypt.hash(password, salt,function(err,res){
                     password_hash= res;
                     console.log(password_hash);
-                     pool.query('INSERT INTO tbl_user (username,password,role) VALUES($1,$2,$3)',[username,password_hash,role] ,(error, results) => {
+                     pool.query('INSERT INTO tbl_user (username,password,role,nama_lengkap,email,foto,url_foto,nip,bidang,no_telepon,pegawai) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',[username,password_hash,role,nama_lengkap,email,name,complete_path,nip,bidang,no_telepon,pegawai] ,(error, results) => {
                     if (error) {
                         throw error
                     }
@@ -66,8 +67,6 @@ const create = (request, response) => {
                 });
             });
             
-
-
         }
     })
 
@@ -78,10 +77,10 @@ const read = (request, response) => {
     const { username,password } 
     = request.body
 
-    pool.query('SELECT count(*) as total from tbl_users WHERE username =$1',[username],(error,results) => {
+    pool.query('SELECT count(*) as total from tbl_users WHERE username =$1 and is_delete=false',[username],(error,results) => {
             if(results.rows[0].total>0)
             {
-                pool.query('SELECT * from tbl_users WHERE username =$1',[username],(error,results) => {
+                pool.query('SELECT * from tbl_users WHERE username =$1 and is_delete=false',[username],(error,results) => {
                     bcrypt.compare(password, results.rows[0].password, function(err, res) {
     
                         if(res) {
@@ -110,10 +109,10 @@ const login = (request, response) => {
     const { username,password } 
     = request.body
 
-    pool.query('SELECT count(*) as total from tbl_user WHERE username =$1',[username],(error,results) => {
+    pool.query('SELECT count(*) as total from tbl_user WHERE username =$1 and is_delete=false',[username],(error,results) => {
             if(results.rows[0].total>0)
             {
-                pool.query('SELECT * from tbl_user WHERE username =$1',[username],(error,results) => {
+                pool.query('SELECT * from tbl_user WHERE username =$1 and is_delete=false',[username],(error,results) => {
                     bcrypt.compare(password, results.rows[0].password, function(err, res) {
     
                         if(res) {
@@ -121,7 +120,7 @@ const login = (request, response) => {
                             //response.status(200).json({success:true,data: "User ditemukan" });
                             const token = generateAccessToken({ username: username })
                             //console.log(token);
-                            response.status(200).json( {success:true,"token":token,"id" : results.rows[0].id,"username" : username ,role: results.rows[0].role})
+                            response.status(200).json( {success:true,"token":token,"id" : results.rows[0].id,"username" : username ,role: results.rows[0].role ,nama_lengkap: results.rows[0].nama_lengkap ,nip: results.rows[0].nip ,email: results.rows[0].email ,bidang: results.rows[0].bidang ,no_telepon: results.rows[0].no_telepon ,url_foto: results.rows[0].url_foto})
                         } else {
                             //console.log('Your password not mached.');
                             response.status(400).json({success:false,data: "password tidak sama" });
@@ -165,16 +164,40 @@ const readall = (request, response) => {
     
 }
 
+const read_by_id = (request, response) => {
+    const id = parseInt(request.params.id);
+    const { username } 
+    = request.body
+   // console.log( username);
+    var res = [];
+    var items = [];
+
+    pool.query('SELECT count(*) as total from tbl_user',(error,results) => {
+
+                pool.query('SELECT * from tbl_user WHERE id=$1 and is_delete=$2',[id, false],(error,results1) => {
+                //bcrypt.compare(password, results.rows[0].password, function(err, res) {
+
+                    if(results1) {
+                        items.push({rows:results1.rows})
+                        res.push(items)
+                        response.status(200).json( {success:true,data:res})
+                    } else {
+                        //console.log('Your password not mached.');
+                        response.status(400).json({success:false,data: "password tidak sama" });
+                    }
+                });
+
+            });
+        
+    
+}
 
 const update = (request, response) => {
     const id = parseInt(request.params.id);
-    const { username,password,role } 
+    const { username,password,role,nama_lengkap,foto,email,nip,bidang,no_telepon,pegawai } 
     = request.body
 
-
-    
-
-     pool.query('SELECT Count(*) as total FROM tbl_user WHERE id = $1',[id] ,(error, results) => {
+     pool.query('SELECT Count(*) as total FROM tbl_user WHERE id = $1 and is_delete=false',[id] ,(error, results) => {
         if (error) {
           throw error
         }
@@ -186,35 +209,61 @@ const update = (request, response) => {
                bcrypt.hash(password, salt,function(err,res){
                    password_hash= res;
                    console.log(password_hash);
-                   pool.query('SELECT * FROM tbl_user WHERE id = $1',[id] ,(error, results) => {
+                   pool.query('SELECT * FROM tbl_user WHERE id = $1 and is_delete=false',[id] ,(error, results) => {
                     
                     if (error) {
                         throw error
                     }
-                            // doc = results.rows[0].photo;
-                            // var doc_path = __dirname +path.join('/dokumens/user/'+ doc);
-                            // console.log(doc_path);
-                            // fs.unlinkSync(doc_path);
-                            // console.log(doc_path);
-
-                            // let sampleFile = request.files.photo;
+                    
+                        let name;
+                        let complete_path;
+        
+                        name = results.rows[0].foto;
+                        complete_path = results.rows[0].url_foto;
+                        
+                        console.log(password);
+                        if(password == null){
+                            console.log(results.rows[0].password);
+                            password_hash = results.rows[0].password;
+                        }
+                        
+                        if (request.files) {
+                            let doc = results.rows[0].foto;
+                            //console.log(doc);
+                            var doc_path = __dirname +path.join('/dokumens/user/'+ doc);
+                            //console.log(doc_path);
+                            if(fs.existsSync(doc_path))
+                            {
+                                fs.unlinkSync(doc_path);
+                                console.log(doc_path);
+                            }
+                
+                            let sampleFile = request.files.foto;
                             // console.log(sampleFile);
-                            // const now = Date.now()
-                            // let name = now + '_' + sampleFile['name'].replace(/\s+/g, '')
-                            // complete_path = base_url+'dokumens/user/'+name;
-                            // console.log(__dirname);
-                            // sampleFile.mv(path.join(__dirname + '/dokumens/user/') + name, function (err) {
-                            //     if (err)
-                            //         console.log(err);
-                            // });
+                            const now = Date.now();
+                            name = now + '_' + sampleFile['name'].replace(/\s+/g, '')
+                            complete_path = 'http://localhost:3014/api/V1/dokumens/user/'+name;
+                            console.log(complete_path);
+                            //console.log(__dirname);
+                            sampleFile.mv(path.join(__dirname + '/dokumens/user/') + name, function (err) {
+                                if (err){
+                                    console.log(err);
+                                }
+                                    
+                            });
+                        }
 
-                            pool.query('UPDATE tbl_user SET username=$1,password=$2,role=$3 WHERE id=$4',[username,password_hash,role,id] ,(error, results) => {
+                        console.log(name);
+                        console.log(complete_path);
+
+                            pool.query('UPDATE tbl_user SET username=$1,password=$2,role=$3,nama_lengkap=$5,email=$6,foto=$7,url_foto=$8,nip=$9,bidang=$10,no_telepon=$11,pegawai=$12 WHERE id=$4',[username,password_hash,role,id,nama_lengkap,email,name,complete_path,nip,bidang,no_telepon,pegawai] ,(error, results) => {
                             if (error) {
                                 throw error
                             }                          
 
                             response.status(200).json({success:true,data: "User baru berhasil diperbarui" });
                         });
+                        
                     });
                 });
            });
@@ -275,14 +324,13 @@ const delete_ = (request, response) => {
     
 }
 
-// const download = (request, response) => {
-//     const filename = request.params.filename;
-//     console.log(filename);
-//     var doc_path = __dirname + path.join('/dokumens/user/'+ filename);
-//     console.log(doc_path);
-//     response.download(doc_path);
-//     //response.status(200).send({success:true,data:'data berhasil diunduh'})
-// };
+const download = (request, response) => {
+    const filename = request.params.filename;
+    console.log(filename);
+    var doc_path = __dirname +path.join('/dokumens/user/'+ filename);
+    console.log(doc_path);
+    response.download(doc_path);
+};
 
   // ======================================== Access token =======================================
   function generateAccessToken(username) {
@@ -321,7 +369,8 @@ module.exports = {
     read,
     readall,
     login,
-    // read_by_id,
+    read_by_id,
     update,
     delete_,
+    download,
     }

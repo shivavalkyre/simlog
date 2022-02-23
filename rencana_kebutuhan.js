@@ -109,7 +109,7 @@ const read_by_id = (request, response) => {
 }
 
 const maxID = (request, response) => {
-  const id = parseInt(request.params.id);
+  const noid = request.params.id;
   const {page,rows} = request.body
   var page_req = page || 1
   var rows_req = rows || 10
@@ -117,8 +117,12 @@ const maxID = (request, response) => {
   var res = []
   var items = []
 
+  text = noid.split('|');
 
-  pool.query('SELECT count(*) as total FROM tbl_rencana_kebutuhan where id_user=$1 ',[id], (error, results) => {
+  currentYear = text[0];
+  id = text[1];
+
+  pool.query('SELECT count(*) as total FROM tbl_rencana_kebutuhan where id_user=$1 and tgl_rencana::text like $2 ',[id, currentYear + '%'], (error, results) => {
     if (error) {
       throw error
     }

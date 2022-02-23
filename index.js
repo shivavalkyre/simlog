@@ -210,6 +210,7 @@ app.delete('/api/V1/simlog/role_modul_menu/delete/:id', role_modul_menu.delete_)
 app.post('/api/V1/simlog/transaksi/create', transaksi.create);
 app.get('/api/V1/simlog/transaksi/read', transaksi.read);
 app.get('/api/V1/simlog/transaksi/:id', transaksi.read_by_id);
+app.get('/api/V1/simlog/transaksi/maxID/:id', transaksi.maxID);
 app.put('/api/V1/simlog/transaksi/update/:id', transaksi.update);
 app.delete('/api/V1/simlog/transaksi/delete/:id', transaksi.delete_);
 // ======================================================================================

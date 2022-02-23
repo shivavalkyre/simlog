@@ -321,7 +321,7 @@ module.exports = {
     create,
      read,
     // readall,
-    // login,
+    // maxID,
     read_by_id,
     update,
     delete_,

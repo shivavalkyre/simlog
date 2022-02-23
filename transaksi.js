@@ -127,6 +127,34 @@ const read_by_id = (request, response) => {
 
 }
 
+const maxID = (request, response) => {
+  const noid = request.params.id;
+  const {page,rows} = request.body
+  var page_req = page || 1
+  var rows_req = rows || 10
+  var offset = (page_req - 1) * rows_req
+  var res = []
+  var items = []
+
+  text = noid.split('|');
+
+  currentYear = text[0];
+  id = text[1];
+
+  pool.query('SELECT count(*) as total FROM tbl_transaksi where id_user=$1 and tgl_transaksi::text like $2 ',[id, currentYear + '%'], (error, results) => {
+    if (error) {
+      throw error
+    }
+   //console.log(results.rows[0].total)
+
+    items.push({rows:results.rows[0].total})
+    res.push(items)
+    response.status(200).send({success:true,data:res})
+
+  })
+
+}
+
 const update = (request, response) => {
   const id = parseInt(request.params.id);
   const {
@@ -263,6 +291,7 @@ module.exports = {
   create,
   read,
   read_by_id,
+  maxID,
   update,
   delete_,
 }
